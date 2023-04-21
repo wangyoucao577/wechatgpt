@@ -14,7 +14,7 @@ var flags struct {
 }
 
 func init() {
-	flag.StringVar(&flags.apiKey, "apiKey", "", "Your api_key of OpenAI platform.")
+	flag.StringVar(&flags.apiKey, "api_key", "", "Your api_key of OpenAI platform.")
 }
 
 func main() {

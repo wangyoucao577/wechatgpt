@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-chatgpt-cli
-wechat-server
+cmd/chatgpt-cli/chatgpt-cli
+cmd/wechat-server/wechat-server
 
 # Test binary, built with `go test -c`
 *.test

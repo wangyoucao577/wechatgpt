@@ -95,8 +95,8 @@ func wxMessageHandler(c *gin.Context) {
 	wxResp.CreateTime = time.Now().Unix()
 	wxResp.MsgType.Value = wxMessageTypeText
 
-	// TODO: generate response
-	wxResp.Content.Value = wxReq.Content.Value
+	// generate response via chatgpt
+	wxResp.Content.Value = chatgpt(wxReq.Content.Value, time.Duration(time.Millisecond*4900)) // almost 5 seconds due to wechat's limitation
 
 	if b, err := xml.Marshal(wxResp); err != nil {
 		c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)

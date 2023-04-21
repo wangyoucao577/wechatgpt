@@ -9,12 +9,10 @@ import (
 )
 
 var flags struct {
-	apiKey string
-	port   uint
+	port uint
 }
 
 func init() {
-	flag.StringVar(&flags.apiKey, "api_key", "", "Your api_key of OpenAI platform.")
 	flag.UintVar(&flags.port, "p", 8080, "Listen port.")
 }
 

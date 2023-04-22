@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,11 +12,13 @@ import (
 )
 
 var wechatFlags struct {
-	token string
+	token          string
+	usersWhitelist string
 }
 
 func init() {
-	flag.StringVar(&wechatFlags.token, "token", "", "Your token to verify wechat platform requests.")
+	flag.StringVar(&wechatFlags.token, "wechat_token", "", "Your token to verify wechat platform requests.")
+	flag.StringVar(&wechatFlags.token, "wechat_users_whitelist", "", "wechat users(OpenIDs) that permitted to talk to, split by ','.")
 }
 
 func wxValidationHandler(c *gin.Context) {
@@ -57,6 +60,26 @@ func wxMessageHandler(c *gin.Context) {
 		return
 	}
 	glog.V(1).Infof("wechat request: %s\n", wxReq.String())
+
+	if gin.Mode() == gin.ReleaseMode && len(wechatFlags.usersWhitelist) > 0 { // only talk to whitelist users on release
+		usersWhitelist := wechatFlags.usersWhitelist
+		if !strings.Contains(usersWhitelist, wxReq.FromUserName.Value) {
+			wxResp.FromUserName.Value = wxReq.ToUserName.Value
+			wxResp.ToUserName.Value = wxReq.FromUserName.Value
+			wxResp.CreateTime = time.Now().Unix()
+			wxResp.MsgType.Value = wechat.MessageTypeText
+			wxResp.Content = &wechat.Content{Value: "不想搭理你"}
+
+			glog.V(1).Infof("wechat response: %s\n", wxResp.String())
+
+			if b, err := wxResp.Marshal(); err != nil {
+				c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
+			} else {
+				c.String(http.StatusOK, string(b))
+			}
+			return
+		}
+	}
 
 	if wxReq.Content.Value == "1" { // fetch answers
 		wxResp.FromUserName.Value = wxReq.ToUserName.Value

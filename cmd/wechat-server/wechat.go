@@ -39,6 +39,18 @@ func wxValidationHandler(c *gin.Context) {
 	}
 }
 
+func replyMessageResponse(wxResp *wechat.Message, c *gin.Context) {
+	wxResp.CreateTime = time.Now().Unix()
+
+	glog.V(1).Infof("wechat response: %s\n", wxResp.String())
+
+	if b, err := wxResp.Marshal(); err != nil {
+		c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
+	} else {
+		c.String(http.StatusOK, string(b))
+	}
+}
+
 func wxMessageHandler(c *gin.Context) {
 	if gin.Mode() == gin.ReleaseMode { // validate all wechat requests on release
 		token := wechatFlags.token
@@ -66,38 +78,21 @@ func wxMessageHandler(c *gin.Context) {
 	wxResp.MsgType.Value = wechat.MessageTypeText // only support text response at the moment
 
 	if wxReq.Content != nil && (wxReq.Content.Value == "help" || wxReq.Content.Value == "帮助") { // return help information
-		wxResp.CreateTime = time.Now().Unix()
 		wxResp.Content = &wechat.Content{Value: "回复\"help\"或\"帮助\"获取帮助\n回复任意内容开启对话\n问题问完过一会回复\"1\"来获取答案"}
-
-		glog.V(1).Infof("wechat response: %s\n", wxResp.String())
-
-		if b, err := wxResp.Marshal(); err != nil {
-			c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
-		} else {
-			c.String(http.StatusOK, string(b))
-		}
+		replyMessageResponse(&wxResp, c)
 		return
 	}
 
 	if gin.Mode() == gin.ReleaseMode && len(wechatFlags.usersWhitelist) > 0 { // only talk to whitelist users on release
 		usersWhitelist := wechatFlags.usersWhitelist
 		if !strings.Contains(usersWhitelist, wxReq.FromUserName.Value) {
-			wxResp.CreateTime = time.Now().Unix()
 			wxResp.Content = &wechat.Content{Value: "不想跟你说话"}
-
-			glog.V(1).Infof("wechat response: %s\n", wxResp.String())
-
-			if b, err := wxResp.Marshal(); err != nil {
-				c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
-			} else {
-				c.String(http.StatusOK, string(b))
-			}
+			replyMessageResponse(&wxResp, c)
 			return
 		}
 	}
 
 	if wxReq.Content != nil && wxReq.Content.Value == "1" { // fetch answers
-		wxResp.CreateTime = time.Now().Unix()
 		wxResp.Content = &wechat.Content{Value: "没有了"} // default value
 
 		if answersChanAny, ok := answersMap.Load(wxReq.FromUserName.Value); ok {
@@ -110,13 +105,7 @@ func wxMessageHandler(c *gin.Context) {
 			}
 		}
 
-		glog.V(1).Infof("wechat response: %s\n", wxResp.String())
-
-		if b, err := wxResp.Marshal(); err != nil {
-			c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
-		} else {
-			c.String(http.StatusOK, string(b))
-		}
+		replyMessageResponse(&wxResp, c)
 		return
 	}
 
@@ -152,15 +141,7 @@ func wxMessageHandler(c *gin.Context) {
 			continue
 		}
 
-		wxResp.CreateTime = time.Now().Unix()
-
-		glog.V(1).Infof("wechat response: %s\n", wxResp.String())
-
-		if b, err := wxResp.Marshal(); err != nil {
-			c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
-		} else {
-			c.String(http.StatusOK, string(b))
-		}
+		replyMessageResponse(&wxResp, c)
 		return
 	}
 

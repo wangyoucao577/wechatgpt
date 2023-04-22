@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,14 +19,13 @@ func init() {
 }
 
 var questionsChan chan question
-var answersChan chan string
+var answersMap sync.Map // user -> answersChan
 
 func main() {
 	flag.Parse()
 	defer glog.Flush()
 
 	questionsChan = make(chan question, 10) // max cache 10 questions
-	answersChan = make(chan string, 10)     // max cache 10 answers
 
 	go func() { // chatgpt tasks
 		for {
@@ -37,13 +37,21 @@ func main() {
 
 			answer := chatgpt(q.content, time.Minute)
 
-			// TODO: answers chan per user
-			// TODO: split answers for wechat
+			if _, ok := answersMap.Load(q.user); !ok {
+				answersMap.Store(q.user, make(chan string, 10)) // max cache 10 answers)
+			}
+			answersChanAny, _ := answersMap.Load(q.user)
+			answersChan := answersChanAny.(chan string)
+
+			// TODO: split answers by length for wechat
 			answersChan <- answer
 		}
 	}()
 	defer close(questionsChan)
-	defer close(answersChan)
+	defer answersMap.Range(func(k, v any) bool {
+		close(v.(chan string))
+		return true
+	})
 
 	r := gin.Default()
 	r.GET("/wx", wxValidationHandler)

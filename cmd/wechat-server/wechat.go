@@ -63,14 +63,16 @@ func wxMessageHandler(c *gin.Context) {
 		wxResp.ToUserName.Value = wxReq.FromUserName.Value
 		wxResp.CreateTime = time.Now().Unix()
 		wxResp.MsgType.Value = wechat.MessageTypeText
-		wxResp.Content = &wechat.Content{}
+		wxResp.Content = &wechat.Content{Value: "没有了"} // default value
 
-		select {
-		case answer := <-answersChan:
-			wxResp.Content.Value = answer
-		default:
-			wxResp.Content.Value = "没有了"
-			glog.Warningf("no answer available")
+		if answersChanAny, ok := answersMap.Load(wxReq.FromUserName.Value); ok {
+			answersChan := answersChanAny.(chan string)
+			select {
+			case answer := <-answersChan:
+				wxResp.Content.Value = answer
+			default:
+				glog.Warningf("no answer available")
+			}
 		}
 
 		glog.V(1).Infof("wechat response: %s\n", wxResp.String())

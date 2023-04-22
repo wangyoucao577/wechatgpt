@@ -61,6 +61,23 @@ func wxMessageHandler(c *gin.Context) {
 	}
 	glog.V(1).Infof("wechat request: %s\n", wxReq.String())
 
+	if wxReq.Content.Value == "help" || wxReq.Content.Value == "帮助" { // return help information
+		wxResp.FromUserName.Value = wxReq.ToUserName.Value
+		wxResp.ToUserName.Value = wxReq.FromUserName.Value
+		wxResp.CreateTime = time.Now().Unix()
+		wxResp.MsgType.Value = wechat.MessageTypeText
+		wxResp.Content = &wechat.Content{Value: "回复\"help\"或\"帮助\"获取帮助\n回复任意内容开启对话\n问题问完过一会回复\"1\"来获取答案"}
+
+		glog.V(1).Infof("wechat response: %s\n", wxResp.String())
+
+		if b, err := wxResp.Marshal(); err != nil {
+			c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
+		} else {
+			c.String(http.StatusOK, string(b))
+		}
+		return
+	}
+
 	if gin.Mode() == gin.ReleaseMode && len(wechatFlags.usersWhitelist) > 0 { // only talk to whitelist users on release
 		usersWhitelist := wechatFlags.usersWhitelist
 		if !strings.Contains(usersWhitelist, wxReq.FromUserName.Value) {
@@ -68,7 +85,7 @@ func wxMessageHandler(c *gin.Context) {
 			wxResp.ToUserName.Value = wxReq.FromUserName.Value
 			wxResp.CreateTime = time.Now().Unix()
 			wxResp.MsgType.Value = wechat.MessageTypeText
-			wxResp.Content = &wechat.Content{Value: "不想搭理你"}
+			wxResp.Content = &wechat.Content{Value: "不想跟你说话"}
 
 			glog.V(1).Infof("wechat response: %s\n", wxResp.String())
 

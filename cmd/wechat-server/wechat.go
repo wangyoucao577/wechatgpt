@@ -145,9 +145,11 @@ func wxMessageHandler(c *gin.Context) {
 			case answer := <-answersChan:
 				wxResp.Content = &wechat.Content{Value: answer}
 			default:
-				glog.Warningf("no answer available")
-				continue
+				glog.V(1).Infof("no answer available")
 			}
+		}
+		if wxResp.Content == nil { // no answer available
+			continue
 		}
 
 		wxResp.CreateTime = time.Now().Unix()

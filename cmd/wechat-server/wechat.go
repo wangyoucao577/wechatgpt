@@ -37,6 +37,18 @@ func wxValidationHandler(c *gin.Context) {
 }
 
 func wxMessageHandler(c *gin.Context) {
+	if gin.Mode() == gin.ReleaseMode { // validate all wechat requests on release
+		token := wechatFlags.token
+
+		signature := c.Query("signature")
+		timestamp := c.Query("timestamp")
+		nonce := c.Query("nonce")
+		echostr := c.Query("echostr")
+		if _, err := wechat.New(token).Validate(signature, timestamp, nonce, echostr); err != nil {
+			c.String(http.StatusBadRequest, err.Error())
+		}
+	}
+
 	var wxReq, wxResp wechat.Message
 
 	if err := wxReq.Decode(c.Request.Body); err != nil {

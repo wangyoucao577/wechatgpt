@@ -60,6 +60,7 @@ func wxMessageHandler(c *gin.Context) {
 	}
 
 	// generate response via chatgpt
+	wxResp.Content = &wechat.Content{}
 	wxResp.Content.Value = chatgpt(questionForGPT, time.Duration(time.Millisecond*4900)) // almost 5 seconds due to wechat's limitation
 
 	if b, err := wxResp.Marshal(); err != nil {

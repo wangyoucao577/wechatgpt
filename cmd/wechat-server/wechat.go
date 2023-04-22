@@ -1,12 +1,8 @@
 package main
 
 import (
-	"crypto/sha1"
-	"encoding/hex"
 	"flag"
 	"net/http"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,16 +28,11 @@ func wxValidationHandler(c *gin.Context) {
 	nonce := c.Query("nonce")
 	echostr := c.Query("echostr")
 
-	l := []string{token, timestamp, nonce}
-	sort.Strings(l)
-	hashcode := sha1.Sum([]byte(strings.Join(l, "")))
-	hashcodeStr := hex.EncodeToString(hashcode[:])
-
-	if hashcodeStr == signature {
-		c.String(http.StatusOK, echostr)
-		return
+	if s, err := wechat.New(token).Validate(signature, timestamp, nonce, echostr); err != nil {
+		c.String(http.StatusBadRequest, err.Error())
+	} else {
+		c.String(http.StatusOK, s)
 	}
-	c.String(http.StatusBadRequest, "")
 }
 
 func wxMessageHandler(c *gin.Context) {

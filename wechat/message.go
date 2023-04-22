@@ -3,6 +3,7 @@ package wechat
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io"
 )
 
@@ -69,4 +70,16 @@ func (m *Message) Unmarshal(b []byte) error {
 // Decode decodes wechat message.
 func (m *Message) Decode(r io.Reader) error {
 	return xml.NewDecoder(r).Decode(m)
+}
+
+// String generates string of message.
+func (m Message) String() string {
+	s := fmt.Sprintf("ToUserName %s FromUserName %s MsgType %s CreateTime %d MsgId %d", m.ToUserName.Value, m.FromUserName.Value, m.MsgType.Value, m.CreateTime, m.MsgId)
+	if m.Content != nil {
+		s += fmt.Sprintf(" Content %s", m.Content.Value)
+	}
+	if m.Recognition != nil {
+		s += fmt.Sprintf(" Recognition %s", m.Recognition.Value)
+	}
+	return s
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang/glog"
 	"github.com/wangyoucao577/wechatgpt/wechat"
 )
 
@@ -42,6 +43,7 @@ func wxMessageHandler(c *gin.Context) {
 		c.String(http.StatusBadRequest, "decode wx message failed")
 		return
 	}
+	glog.V(1).Infof("wechat request: %s\n", wxReq.String())
 
 	wxResp.FromUserName.Value = wxReq.ToUserName.Value
 	wxResp.ToUserName.Value = wxReq.FromUserName.Value
@@ -61,7 +63,9 @@ func wxMessageHandler(c *gin.Context) {
 
 	// generate response via chatgpt
 	wxResp.Content = &wechat.Content{}
-	wxResp.Content.Value = chatgpt(questionForGPT, time.Duration(time.Millisecond*4900)) // almost 5 seconds due to wechat's limitation
+	wxResp.Content.Value = chatgpt(questionForGPT, time.Duration(time.Millisecond*4500)) // almost 5 seconds due to wechat's limitation
+
+	glog.V(1).Infof("wechat response: %s\n", wxResp.String())
 
 	if b, err := wxResp.Marshal(); err != nil {
 		c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)

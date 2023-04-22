@@ -18,7 +18,7 @@ var wechatFlags struct {
 
 func init() {
 	flag.StringVar(&wechatFlags.token, "wechat_token", "", "Your token to verify wechat platform requests.")
-	flag.StringVar(&wechatFlags.token, "wechat_users_whitelist", "", "wechat users(OpenIDs) that permitted to talk to, split by ','.")
+	flag.StringVar(&wechatFlags.usersWhitelist, "wechat_users_whitelist", "", "wechat users(OpenIDs) that permitted to talk to, split by ','.")
 }
 
 func wxValidationHandler(c *gin.Context) {

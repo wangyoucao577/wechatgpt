@@ -58,10 +58,30 @@ func wxMessageHandler(c *gin.Context) {
 	}
 	glog.V(1).Infof("wechat request: %s\n", wxReq.String())
 
-	wxResp.FromUserName.Value = wxReq.ToUserName.Value
-	wxResp.ToUserName.Value = wxReq.FromUserName.Value
-	wxResp.CreateTime = time.Now().Unix()
-	wxResp.MsgType.Value = wechat.MessageTypeText
+	if wxReq.Content.Value == "1" { // fetch answers
+		wxResp.FromUserName.Value = wxReq.ToUserName.Value
+		wxResp.ToUserName.Value = wxReq.FromUserName.Value
+		wxResp.CreateTime = time.Now().Unix()
+		wxResp.MsgType.Value = wechat.MessageTypeText
+		wxResp.Content = &wechat.Content{}
+
+		select {
+		case answer := <-answersChan:
+			wxResp.Content.Value = answer
+		default:
+			wxResp.Content.Value = "没有了"
+			glog.Warningf("no answer available")
+		}
+
+		glog.V(1).Infof("wechat response: %s\n", wxResp.String())
+
+		if b, err := wxResp.Marshal(); err != nil {
+			c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
+		} else {
+			c.String(http.StatusOK, string(b))
+		}
+		return
+	}
 
 	var questionForGPT string
 	switch wxReq.MsgType.Value {
@@ -75,14 +95,9 @@ func wxMessageHandler(c *gin.Context) {
 	}
 
 	// generate response via chatgpt
-	wxResp.Content = &wechat.Content{}
-	wxResp.Content.Value = chatgpt(questionForGPT, time.Duration(time.Millisecond*4500)) // almost 5 seconds due to wechat's limitation
+	// wxResp.Content = &wechat.Content{}
+	// wxResp.Content.Value = chatgpt(questionForGPT, time.Duration(time.Millisecond*4500)) // almost 5 seconds due to wechat's limitation
+	questionsChan <- question{user: wxReq.FromUserName.Value, content: questionForGPT}
 
-	glog.V(1).Infof("wechat response: %s\n", wxResp.String())
-
-	if b, err := wxResp.Marshal(); err != nil {
-		c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
-	} else {
-		c.String(http.StatusOK, string(b))
-	}
+	c.String(http.StatusOK, "success") // so that wechat won't retry
 }

@@ -17,6 +17,11 @@ func init() {
 	flag.StringVar(&openaiFlags.apiKey, "api_key", "", "Your api_key of OpenAI platform.")
 }
 
+type question struct {
+	user    string
+	content string
+}
+
 func chatgpt(question string, timeout time.Duration) string {
 	glog.V(1).Infof("Question: %s\n", question)
 

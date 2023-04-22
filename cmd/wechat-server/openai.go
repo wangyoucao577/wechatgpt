@@ -18,6 +18,7 @@ func init() {
 }
 
 func chatgpt(question string, timeout time.Duration) string {
+	glog.V(1).Infof("Question: %s\n", question)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -41,5 +42,6 @@ func chatgpt(question string, timeout time.Duration) string {
 		return err.Error()
 	}
 
+	glog.V(1).Infof("Answer: %+v\n", resp.Choices)
 	return resp.Choices[0].Message.Content
 }

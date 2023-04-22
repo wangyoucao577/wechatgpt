@@ -46,6 +46,7 @@ func wxMessageHandler(c *gin.Context) {
 		echostr := c.Query("echostr")
 		if _, err := wechat.New(token).Validate(signature, timestamp, nonce, echostr); err != nil {
 			c.String(http.StatusBadRequest, err.Error())
+			return
 		}
 	}
 

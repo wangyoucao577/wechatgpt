@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/sha1"
 	"encoding/hex"
-	"encoding/xml"
 	"flag"
 	"net/http"
 	"sort"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/wangyoucao577/wechatgpt/wechat"
 )
 
 var wechatFlags struct {
@@ -44,61 +44,34 @@ func wxValidationHandler(c *gin.Context) {
 	c.String(http.StatusBadRequest, "")
 }
 
-const (
-	wxMessageTypeText  = "text"
-	wxMessageTypeVoice = "voice"
-)
-
-type wxMessage struct {
-	XMLName    xml.Name `xml:"xml"`
-	ToUserName struct {
-		XMLName xml.Name `xml:"ToUserName"`
-		Value   string   `xml:",cdata"`
-	}
-	FromUserName struct {
-		XMLName xml.Name `xml:"FromUserName"`
-		Value   string   `xml:",cdata"`
-	}
-	MsgType struct {
-		XMLName xml.Name `xml:"MsgType"`
-		Value   string   `xml:",cdata"`
-	}
-	Content struct {
-		XMLName xml.Name `xml:"Content"`
-		Value   string   `xml:",cdata"`
-	}
-
-	CreateTime int64 `xml:"CreateTime"`
-	MsgId      int64 `xml:"MsgId,omitempty"`
-
-	// Recognition struct {
-	// 	XMLName  xml.Name `xml:"Recognition,omitempty"`
-	// 	Value string   `xml:",chardata,omitempty"`
-	// }
-}
-
 func wxMessageHandler(c *gin.Context) {
-	var wxReq, wxResp wxMessage
+	var wxReq, wxResp wechat.Message
 
-	if err := xml.NewDecoder(c.Request.Body).Decode(&wxReq); err != nil {
+	if err := wxReq.Decode(c.Request.Body); err != nil {
 		c.String(http.StatusBadRequest, "decode wx message failed")
-		return
-	}
-
-	if wxReq.MsgType.Value != wxMessageTypeText {
-		c.String(http.StatusBadRequest, "unsupport message type "+wxReq.MsgType.Value)
 		return
 	}
 
 	wxResp.FromUserName.Value = wxReq.ToUserName.Value
 	wxResp.ToUserName.Value = wxReq.FromUserName.Value
 	wxResp.CreateTime = time.Now().Unix()
-	wxResp.MsgType.Value = wxMessageTypeText
+	wxResp.MsgType.Value = wechat.MessageTypeText
+
+	var questionForGPT string
+	switch wxReq.MsgType.Value {
+	case wechat.MessageTypeText:
+		questionForGPT = wxReq.Content.Value
+	case wechat.MessageTypeVoice:
+		questionForGPT = wxReq.Recognition.Value
+	default: // only process text/voice recoginzation at the moment
+		c.String(http.StatusBadRequest, "unsupport message type "+wxReq.MsgType.Value)
+		return
+	}
 
 	// generate response via chatgpt
-	wxResp.Content.Value = chatgpt(wxReq.Content.Value, time.Duration(time.Millisecond*4900)) // almost 5 seconds due to wechat's limitation
+	wxResp.Content.Value = chatgpt(questionForGPT, time.Duration(time.Millisecond*4900)) // almost 5 seconds due to wechat's limitation
 
-	if b, err := xml.Marshal(wxResp); err != nil {
+	if b, err := wxResp.Marshal(); err != nil {
 		c.String(http.StatusBadGateway, "xml marshal failed, err %v", err)
 	} else {
 		c.String(http.StatusOK, string(b))
